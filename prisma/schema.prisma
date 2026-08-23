@@ -1,0 +1,471 @@
+// Prisma schema for the ROAR interior design / architecture CRM.
+// SQLite for local MVP use; swap the datasource provider to "postgresql"
+// (Supabase) later without changing the models.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Settings (singleton) ----------
+
+model Settings {
+  id           String   @id @default("default")
+  businessName String   @default("ROAR Studio")
+  tagline      String   @default("Architecture")
+  logoUrl      String?
+  address      String?
+  phone        String?
+  website      String?
+  quote        String   @default("Design is not just what it looks like, it's how it works.")
+  quoteAuthor  String   @default("Steve Jobs")
+  updatedAt    DateTime @updatedAt
+}
+
+// ---------- Enums ----------
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  PAST
+  ON_HOLD
+}
+
+enum ClientSource {
+  REFERRAL
+  WEBSITE
+  SOCIAL_MEDIA
+  WALK_IN
+  EXHIBITION
+  OTHER
+}
+
+enum ProjectType {
+  RESIDENTIAL
+  COMMERCIAL
+  RENOVATION
+  TURNKEY
+  CONSULTATION
+  INTERIOR_DESIGN
+  MODULAR_KITCHEN
+  LANDSCAPE
+  FURNITURE_FURNISHING
+}
+
+enum ProjectStatus {
+  ENQUIRY
+  DESIGN
+  APPROVAL
+  EXECUTION
+  HANDOVER
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  DELAYED
+}
+
+enum VendorCategory {
+  FURNITURE
+  ELECTRICAL
+  PLUMBING
+  CIVIL
+  CARPENTRY
+  PAINTING
+  FLOORING
+  LIGHTING
+  SOFT_FURNISHING
+  MODULAR_KITCHEN
+  GLASS_METAL
+  OTHER
+}
+
+enum TransactionType {
+  CLIENT_PAYMENT
+  VENDOR_PAYMENT
+  EXPENSE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum VendorOrderCategory {
+  TRANSPORT
+  LABOR
+  MISCELLANEOUS
+}
+
+enum ExpenseCategory {
+  LABOR
+  OFFICE
+  TRANSPORT
+  MISCELLANEOUS
+}
+
+enum AgreementType {
+  DESIGN_AGREEMENT
+  EXECUTION_CONTRACT
+  VENDOR_CONTRACT
+  NDA
+  OTHER
+}
+
+enum AgreementStatus {
+  DRAFT
+  SENT
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+enum TeamRole {
+  PRINCIPAL_DESIGNER
+  DESIGNER
+  ARCHITECT
+  SITE_SUPERVISOR
+  PROCUREMENT
+  ACCOUNTS
+  ADMIN
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AccessRole {
+  ADMIN
+  FINANCE
+  EMPLOYEE
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum ClientType {
+  INDIVIDUAL
+  COMPANY
+}
+
+// ---------- Core models ----------
+
+model Client {
+  id                     String       @id @default(cuid())
+  name                   String
+  email                  String?
+  phone                  String
+  altPhone               String?
+  address                String?
+  city                   String?
+  status                 ClientStatus @default(LEAD)
+  source                 ClientSource @default(OTHER)
+  notes                  String?
+  clientType             ClientType   @default(INDIVIDUAL)
+  companyName            String?
+  occupation             String?
+  preferredCommunication String?
+  referredBy             String?
+  anniversary            DateTime?
+  isPriority             Boolean      @default(false)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  projects       Project[]
+  agreements     Agreement[]
+  transactions   Transaction[]
+  contactPersons ContactPerson[]
+  quotations     Quotation[]
+
+  @@index([status])
+}
+
+model ContactPerson {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  name          String
+  code          String?       @unique
+  type          ProjectType   @default(RESIDENTIAL)
+  status        ProjectStatus @default(ENQUIRY)
+  address       String?
+  city          String?
+  area          Float?
+  budget        Float?
+  startDate     DateTime?
+  targetEndDate DateTime?
+  actualEndDate DateTime?
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  milestones       Milestone[]
+  vendorLinks      ProjectVendor[]
+  transactions     Transaction[]
+  agreements       Agreement[]
+  assignments      TeamAssignment[]
+  quotations       Quotation[]
+  vendorOrderItems VendorOrderItem[]
+
+  @@index([status])
+  @@index([clientId])
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  title       String
+  phase       String?
+  status      MilestoneStatus @default(PENDING)
+  progressPct Int             @default(0)
+  startDate   DateTime?
+  dueDate     DateTime?
+  completedAt DateTime?
+  order       Int             @default(0)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Vendor {
+  id           String         @id @default(cuid())
+  name         String
+  category     VendorCategory @default(OTHER)
+  contactName  String?
+  phone        String
+  email        String?
+  address      String?
+  gstin        String?
+  paymentTerms String?
+  rating       Int?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  projectLinks ProjectVendor[]
+  transactions Transaction[]
+  orderItems   VendorOrderItem[]
+
+  @@index([category])
+}
+
+model ProjectVendor {
+  id        String   @id @default(cuid())
+  projectId String
+  vendorId  String
+  scope     String?
+  poValue   Float?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, vendorId])
+}
+
+model VendorOrderItem {
+  id          String              @id @default(cuid())
+  category    VendorOrderCategory @default(MISCELLANEOUS)
+  itemName    String
+  rate        Float
+  quantity    Float               @default(1)
+  discountPct Float               @default(0)
+  gstPct      Float               @default(18)
+  order       Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  vendorId  String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([projectId])
+  @@index([category])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  amount          Float
+  expenseCategory ExpenseCategory?
+  dueDate         DateTime?
+  paidDate        DateTime?
+  method          String?
+  reference       String?
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  vendorId  String?
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([type])
+  @@index([status])
+}
+
+model Quotation {
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique
+  title           String?
+  status          QuotationStatus @default(DRAFT)
+  discountLabel   String?
+  discountPct     Float           @default(0)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  items QuotationItem[]
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model QuotationItem {
+  id          String  @id @default(cuid())
+  room        String
+  description String
+  lengthFt    Float?
+  breadthFt   Float?
+  areaOrQty   Float?
+  amount      Float?
+  amountNote  String?
+  order       Int     @default(0)
+
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model Agreement {
+  id        String          @id @default(cuid())
+  title     String
+  type      AgreementType   @default(DESIGN_AGREEMENT)
+  status    AgreementStatus @default(DRAFT)
+  value     Float?
+  startDate DateTime?
+  endDate   DateTime?
+  fileUrl   String?
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model TeamMember {
+  id           String       @id @default(cuid())
+  name         String
+  role         TeamRole     @default(DESIGNER)
+  status       MemberStatus @default(ACTIVE)
+  email        String?      @unique
+  phone        String?
+  avatarColor  String?
+  accessRole   AccessRole   @default(EMPLOYEE)
+  passwordHash String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  assignments TeamAssignment[]
+  sessions    Session[]
+
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@index([teamMemberId])
+}
+
+model RolePermission {
+  id             String     @id @default(cuid())
+  role           AccessRole @unique
+  dashboard      Boolean    @default(true)
+  clients        Boolean    @default(true)
+  projects       Boolean    @default(true)
+  vendors        Boolean    @default(true)
+  vendorQuota    Boolean    @default(true)
+  quotations     Boolean    @default(true)
+  agreements     Boolean    @default(true)
+  finance        Boolean    @default(false)
+  revenue        Boolean    @default(false)
+  manageTeam     Boolean    @default(false)
+  manageSettings Boolean    @default(false)
+  updatedAt      DateTime   @updatedAt
+}
+
+model TeamAssignment {
+  id         String   @id @default(cuid())
+  role       String?
+  assignedAt DateTime @default(now())
+
+  projectId    String
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  teamMemberId String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, teamMemberId])
+}
