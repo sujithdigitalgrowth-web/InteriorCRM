@@ -3,6 +3,8 @@ import { Compass } from "lucide-react";
 import { hasAnyAdminAccount } from "@/lib/actions/auth";
 import { SetupForm } from "@/app/setup/setup-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function SetupPage() {
   const hasAdmin = await hasAnyAdminAccount();
   if (hasAdmin) redirect("/login");

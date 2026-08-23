@@ -6,6 +6,8 @@ import { getSessionMember } from "@/lib/auth/session";
 import { hasAnyAdminAccount } from "@/lib/actions/auth";
 import { getRolePermissions } from "@/lib/auth/permissions";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const member = await getSessionMember();
 

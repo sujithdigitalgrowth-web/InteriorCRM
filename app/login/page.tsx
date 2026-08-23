@@ -4,6 +4,8 @@ import { getSessionMember } from "@/lib/auth/session";
 import { hasAnyAdminAccount } from "@/lib/actions/auth";
 import { LoginForm } from "@/app/login/login-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const member = await getSessionMember();
   if (member) redirect("/");

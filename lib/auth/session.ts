@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "roar_session";
 const SESSION_DAYS = 30;
+const GUEST_MEMBER_ID = "guest-admin";
 
 export async function createSession(teamMemberId: string) {
   const rawToken = randomBytes(32).toString("hex");
@@ -25,6 +26,10 @@ export async function createSession(teamMemberId: string) {
 }
 
 export async function getSessionMember() {
+  if (process.env.DEMO_MODE === "1") {
+    return prisma.teamMember.findUnique({ where: { id: GUEST_MEMBER_ID } });
+  }
+
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;

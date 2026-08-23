@@ -51,10 +51,11 @@ const DEFAULT_PERMISSIONS: Record<AccessRole, Record<PermissionKey, boolean>> = 
 export async function ensureRolePermissionsSeeded() {
   const roles: AccessRole[] = ["ADMIN", "FINANCE", "EMPLOYEE"];
   for (const role of roles) {
-    const existing = await prisma.rolePermission.findUnique({ where: { role } });
-    if (!existing) {
-      await prisma.rolePermission.create({ data: { role, ...DEFAULT_PERMISSIONS[role] } });
-    }
+    await prisma.rolePermission.upsert({
+      where: { role },
+      create: { role, ...DEFAULT_PERMISSIONS[role] },
+      update: {},
+    });
   }
 }
 

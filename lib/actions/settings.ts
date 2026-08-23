@@ -16,9 +16,11 @@ const SettingsSchema = z.object({
 });
 
 export async function getSettings() {
-  const settings = await prisma.settings.findUnique({ where: { id: "default" } });
-  if (settings) return settings;
-  return prisma.settings.create({ data: { id: "default" } });
+  return prisma.settings.upsert({
+    where: { id: "default" },
+    create: { id: "default" },
+    update: {},
+  });
 }
 
 export async function updateSettings(formData: FormData) {

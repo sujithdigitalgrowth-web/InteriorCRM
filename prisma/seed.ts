@@ -206,6 +206,19 @@ async function main() {
     });
   }
 
+  if (process.env.SEED_GUEST === "1") {
+    await prisma.teamMember.create({
+      data: {
+        id: "guest-admin",
+        name: "Guest",
+        role: "ADMIN",
+        accessRole: "ADMIN",
+        status: "ACTIVE",
+      },
+    });
+    console.log("Seeded guest admin account for demo mode.");
+  }
+
   console.log(`Seeded ${clients.length} clients, ${projectSeeds.length} projects, ${vendors.length} vendors, ${team.length} team members.`);
 }
 
